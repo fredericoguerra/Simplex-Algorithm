@@ -1,0 +1,5 @@
+- printar o as restrições
+- printar as restrições da natureza das variáveis
+- printar y após a resolução
+- resolver o caso geral (diferentes sinais da inequação)
+- fazer a análise de sensibilidade

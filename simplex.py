@@ -1,5 +1,5 @@
+from lib2to3.pgen2.literals import simple_escapes
 import numpy as np
-
 np.seterr(divide='ignore', invalid='ignore')
 
 class PrimalOperators:
@@ -96,7 +96,6 @@ class DualOperators:
             print(var, '=', res)
         print('------------------------------------------------')
 
-
 class Simplex:
     def __init__(self) -> None:
         self.obj_primal = ''
@@ -106,25 +105,26 @@ class Simplex:
         self.cons_primal = ''
         self.cons_dual = ''
         self.n_add_vars = 0
+        self.vars_primal = ''
+        self.signals_primal = []
+        self.signals_dual = []
+        self.var_constraints_list = []
+        self.cons_primal_list = []
 
         self.A_primal = []
         self.b_primal = []
         self.c_primal = []
-        self.Ib_primal = []
-        self.In_primal = []
 
         self.A_dual = []
         self.b_dual = []
         self.c_dual = []
-        self.Ib_dual = []
-        self.In_dual = []
 
     def show_primal(self):
         print('_________________________________')
         print('PRIMAL')
         print('--------')
         print(f'{self.obj_primal} Z = {self.fun_primal}')
-        print(f'\ns.a:\n{self.cons_primal}')
+        print(f'\ns.a:\n{self.cons_primal}\n\nand\n\n{self.vars_primal}')
         print('--------')
         print(f'Decision variables coeficients array (c):\n{self.c_primal}')
         print(f'Coeficients Matrix (A):\n{self.A_primal}')
@@ -152,16 +152,32 @@ class Simplex:
         self.c_primal = np.array(self.c_primal)
 
     def parse_constraints(self, cons: list):
-        for con in cons:
-            if con.find('<=') > -1:
+        self.cons_primal_list = cons
+        for index in range(0,len(cons)):
+            if cons[index].find('<=') > -1:
                 inequality = '<='
-            elif con.find('>=') > -1:
+                if self.obj_primal == 'max':
+                    self.cons_dual+=f'y_{index+1} >= 0\n'
+                elif self.obj_primal == 'min':
+                    self.cons_dual+=f'y_{index+1} <= 0\n'
+
+            elif cons[index].find('>=') > -1:
                 inequality = '>='
-            coefs = con.split(inequality)[0].split('+')
-            b = con.split(inequality)[1]
-            self.b_primal.append(int(b))
+                if self.obj_primal == 'max':
+                    self.cons_dual+=f'y_{index+1} <= 0\n'
+                elif self.obj_primal == 'min':
+                    self.cons_dual+=f'y_{index+1} >= 0\n'
+            elif cons[index].find('=') > -1:
+                inequality = '='
+                self.cons_dual+=f'y_{index+1}, free\n'
+            else:
+                print('error: could not find equation signal. please use <=, >= or =')
+                break
+            coefs = cons[index].split(inequality)[0].split('+')
+            b = cons[index].split(inequality)[1]
+            self.b_primal.append(float(b))
             for coef in coefs:
-                self.A_primal.append(int(coef.split('*')[0]))
+                self.A_primal.append(float(coef.split('*')[0]))
         cols = int(len(self.A_primal)/len(self.b_primal))
         rows = len(self.b_primal)
         
@@ -176,6 +192,26 @@ class Simplex:
             self.fun_dual += str(self.b_primal[index]) + f'*y_{index+1} + '
         self.fun_dual = self.fun_dual[:-3]
         self.A_dual = self.A_primal_cp.T
+
+        #get dual restrictions
+        self.cons_dual+='\nand\n\n'
+        for i in range(0, self.A_dual.shape[0]):
+            for j in range(0, self.A_dual.shape[1]):
+                self.cons_dual+=(f'{self.A_dual[i][j]}*y_{j+1} + ')
+            pos= self.cons_dual.rfind('+')
+            if pos > -1:
+                if self.var_constraints_list[i].find('>=') > -1:
+                    inequality_signal = '>='
+                elif self.var_constraints_list[i].find('<=') > -1:
+                    inequality_signal = '<='
+                elif self.var_constraints_list[i].find('free') > -1:
+                    inequality_signal = '='
+                else:
+                    print('error: missing constraint signal')
+                    break
+                self.cons_dual = self.cons_dual[:pos] + inequality_signal + self.cons_dual[pos + 1:]
+            self.cons_dual+=(f'{self.c_primal[i]}')
+            self.cons_dual+=('\n')
 
     def primal(self):
         self.c = self.parse_fun_primal()
@@ -199,7 +235,12 @@ class Simplex:
             self.cons_primal+=(f'\n{cons}')
         
         self.parse_constraints(cons = constraints)
-    
+
+    def add_var_constraints(self, var_constraints: list):
+        self.var_constraints_list = var_constraints
+        for var_con in var_constraints:
+            self.vars_primal+=(f"{var_con}\n")
+
     def run_primal(self):
         self.c_primal = self.c_primal.reshape(1,len(self.c_primal))
         self.c_primal *= -1
@@ -252,7 +293,6 @@ class Simplex:
         self.table_dual = DualOperators.pivot_table(self, a=self.table_dual, row_index=r_index, col_index=c_index)
         print('------------------------------------------------')
         print(f'1º Iteração:\n')
-        #print('------------------------------------------------')
         print(self.table_dual)
         index = 1
         
@@ -268,35 +308,44 @@ class Simplex:
             index += 1
             if index == 5:
                 break
-        print('\n------------------------------------------------')
-        print(f'{index+1}º Iteração:\n')
-        #print('------------------------------------------------')
-        print(self.table_dual)
         
         DualOperators.get_results(self, a=self.table_dual)
         return self.table_dual
 
-
     def solve(self):
         self.primal()
         self.dual()
-        self.run_primal()
-        self.run_dual()
-        #if self.obj_primal == 'max':
-        #    self.run_primal()
-        #elif self.obj_primal == 'min':
-        #    self.run_dual()
+        #self.run_primal()
+        #self.run_dual()
 
 if __name__ == '__main__':
     simplex = Simplex()
 
+    #simplex.objective_function('min', '0.4*x_1 + 0.5*x_2')
+    #simplex.add_constraints(['0.3*x_1 + 0.1*x_2 <= 2.7', '0.5*x_1 + 0.5*x_2 = 6', '0.6*x_1 + 0.4*x_2 >= 6'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    #simplex.solve()
+
+    #simplex.objective_function('max', '-0.4*x_1 + -0.5*x_2')
+    #simplex.add_constraints(['0.3*x_1 + 0.1*x_2 <= 2.7', '0.5*x_1 + 0.5*x_2 = 6', '0.6*x_1 + 0.4*x_2 >= 6'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    #simplex.solve()
+
+    simplex.objective_function('max', '2*x_1 + 3*x_2')
+    simplex.add_constraints(['-1*x_1 + 2*x_2 <= 4', '1*x_1 + 1*x_2 = 6'])
+    simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    simplex.solve()
+
+    #simplex.objective_function('min', '1*x1+2*x2')
+    #simplex.add_constraints(['-2*x1+'])
+    
     #simplex.objective_function('max', '3*x_1 + 5*x_2')
     #simplex.add_constraints(['1*x_1 + 0*x_2 <= 4','0*x_1 + 2*x_2 <= 12','3*x_1 + 2*x_2 <= 18'])
     #simplex.solve()
 
-    simplex.objective_function('max', '1*x_1 + 1.5*x_2')
-    simplex.add_constraints(['2*x_1 + 2*x_2 <= 160', '1*x_1 + 2*x_2 <= 120', '4*x_1 + 2*x_2 <= 280'])
-    simplex.solve()
+    #simplex.objective_function('max', '1*x_1 + 1.5*x_2')
+    #simplex.add_constraints(['2*x_1 + 2*x_2 <= 160', '1*x_1 + 2*x_2 <= 120', '4*x_1 + 2*x_2 <= 280'])
+    #simplex.solve()
 
     #simplex.objective_function('max', '1*x_1 + 2.5*x_2')
     #simplex.add_constraints(['2*x_1 + 2*x_2 <= 160', '1*x_1 + 2*x_2 <= 120', '4*x_1 + 2*x_2 <= 280'])
