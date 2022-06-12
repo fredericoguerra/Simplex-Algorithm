@@ -357,16 +357,44 @@ if __name__ == '__main__':
     #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
     #simplex.solve()
 
-    #Example MAX 04 - ERRADO
-    #simplex.objective_function('min', '0.4*x_1 + 0.5*x_2')
-    #simplex.add_constraints(['0.3*x_1 + 0.1*x_2 <= 2.7', '0.5*x_1 + 0.5*x_2 = 6', '0.6*x_1 + 0.4*x_2 >= 6'])
+    #Example MAX 04 - CORRETO
+    #simplex.objective_function('max', '3*x_1 + 5*x_2')
+    #simplex.add_constraints(['1*x_1 + 0*x_2 <= 4','0*x_1 + 2*x_2 <= 12','3*x_1 + 2*x_2 <= 18'])
     #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
     #simplex.solve()
+
+    #Example MAX 05 
+    simplex.objective_function('max', '2*x_1 + 1*x_2')
+    simplex.add_constraints(['1*x_1 + 1*x_2 >= 2', '1*x_1 + 1*x_2 <= 4'])
+    simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    simplex.solve()
 
     #Example MIN 01 - CORRETO
     #simplex.objective_function('min','3*x_1 + -6*x_2')
     #simplex.add_constraints(['4*x_1 + 2*x_2 <= 100','5*x_1 +7*x_2 <= 70'])
     #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    #simplex.solve()
+
+    #Example MIN 02 - CORRETO
+    #simplex.objective_function('min','1*x_1 + -2*x_2')
+    #simplex.add_constraints(['2*x_1 + 1*x_2 <= 40', '1*x_1 + 3*x_2 <= 60'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    #simplex.solve()
+
+
+
+
+    #Example MIN 01 - ERRADO
+    #simplex.objective_function('min', '0.4*x_1 + 0.5*x_2')
+    #simplex.add_constraints(['0.3*x_1 + 0.1*x_2 <= 2.7', '0.5*x_1 + 0.5*x_2 = 6', '0.6*x_1 + 0.4*x_2 >= 6'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    #simplex.solve()
+
+
+    #Example MIN 02 - ERRADO
+    #simplex.objective_function('min', '4*x_1 + 12*x_2 + 18*x_3')
+    #simplex.add_constraints(['1*x_1 + 0*x_2 + 3*x_3 >= 3','0*x_1 + 2*x_2 + 2*x_3 >= 5'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0','x_3 >= 0'])
     #simplex.solve()
 
     #simplex.objective_function('max', '-0.4*x_1 + -0.5*x_2')
@@ -378,21 +406,3 @@ if __name__ == '__main__':
     #simplex.add_constraints(['-1*x_1 + 2*x_2 <= 4', '1*x_1 + 1*x_2 = 6'])
     #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
     #simplex.solve()
-
-    #Example MIN 02 - ERRADO
-    #simplex.objective_function('min', '4*x_1 + 12*x_2 + 18*x_3')
-    #simplex.add_constraints(['1*x_1 + 0*x_2 + 3*x_3 >= 3','0*x_1 + 2*x_2 + 2*x_3 >= 5'])
-    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0','x_3 >= 0'])
-    #simplex.solve()
-
-    #Example MIN 03 - CORRETO
-    #simplex.objective_function('min','1*x_1 + -2*x_2')
-    #simplex.add_constraints(['2*x_1 + 1*x_2 <= 40', '1*x_1 + 3*x_2 <= 60'])
-    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
-    #simplex.solve()
-
-    #Example MAX 05 - CORRETO
-    simplex.objective_function('max', '3*x_1 + 5*x_2')
-    simplex.add_constraints(['1*x_1 + 0*x_2 <= 4','0*x_1 + 2*x_2 <= 12','3*x_1 + 2*x_2 <= 18'])
-    simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
-    simplex.solve()
