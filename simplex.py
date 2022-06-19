@@ -239,7 +239,6 @@ class Simplex:
         self.fun_dual = self.fun_dual[:-3]
         self.A_dual = self.A_primal_cp.T
 
-        #get dual restrictions
         self.cons_dual+='\nand\n\n'
         for i in range(0, self.A_dual.shape[0]):
             for j in range(0, self.A_dual.shape[1]):
@@ -300,17 +299,12 @@ class Simplex:
             self.A_primal = np.concatenate((self.A_primal, self.artificial_vars.transpose()),axis=1)
             A_zeros = np.zeros((self.A_primal.shape[0],self.A_primal.shape[1]))
             self.A_primal = np.concatenate((self.A_primal, self.identity_matrix.transpose()),axis=1)
-            #self.A_primal = np.concatenate((self.A_primal, self.artificial_vars.transpose()),axis=1)
-            #A_zeros = np.zeros((self.A_primal.shape[0],self.A_primal.shape[1]-self.identity_matrix.shape[1]))
             self.W_primal = np.zeros([len(self.A_primal[0])])
             A_zeros = np.concatenate((A_zeros,-self.identity_matrix.transpose()),axis=1)
-            #print(self.needs_artificial)
             for i in range(0, self.A_primal.shape[0]):
                 if self.needs_artificial[i] > 0:
                     self.W_primal += self.A_primal[i]
                     self.W_primal += A_zeros[i]
-            #    if self.artificial_vars[0][i] == -1:
-            #        self.W_primal += self.A_primal[i]
             self.W_primal = -np.array([self.W_primal])
         else:
             self.A_primal = np.concatenate((self.A_primal, self.identity_matrix),axis=1)
@@ -399,7 +393,7 @@ class Simplex:
             self.table_dual = np.round(self.table_dual, 2)
             print('\n------------------------------------------------')
             print(f'{index+1}º Iteração:\n')
-            #print('------------------------------------------------')
+            print('------------------------------------------------')
             print(self.table_dual)
             index += 1
             if index == 10:
