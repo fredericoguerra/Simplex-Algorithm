@@ -1,10 +1,14 @@
 from lib2to3.pgen2.literals import simple_escapes
 import numpy as np
+from sympy.solvers.inequalities import reduce_rational_inequalities
+from sympy import Matrix, symbols
+
 np.seterr(divide='ignore', invalid='ignore')
 
 class PrimalOperators:
     def __init__(self):
         self.has_two_phases = False
+        self.z = 0
 
     def set_pivot_column(a : np.array, has_two_phases :False, number_artificial_vars: int):
         if has_two_phases and a[-1,:-1].min() >=0:
@@ -63,15 +67,15 @@ class PrimalOperators:
 
     def get_results(self, a: np.array, obj: str):
         if self.has_two_phases:
-            z = a[-2,-1]
+            self.z = a[-2,-1]
         else:
-            z = a[-1,-1]
+            self.z = a[-1,-1]
         b = a[:-1,-1]
         results = {}
         if obj == 'min':
-            results['Z'] = -z
+            results['Z'] = -self.z
         else:
-            results['Z'] = z
+            results['Z'] = self.z
         for index in range(0,a.shape[0]-1):
             for j in range(0,a.shape[0]-1):
                 if a[index][j] == 1:
@@ -146,6 +150,10 @@ class Simplex:
         self.W_primal = []
         self.needs_artificial = []
         self.past_pivot_index = -99999
+        self.var_basic_index = []
+        self.var_nonbasic_index = []
+        self.table_primal_initial = []
+        self.B_ = []
 
         self.A_primal = []
         self.b_primal = []
@@ -338,7 +346,7 @@ class Simplex:
         self.table_primal = np.concatenate((self.table_primal,self.b_primal),axis=1)
         if self.has_two_phases:
             self.table_primal[-1,-1] = last_b_ele
-        
+        self.table_primal_initial = self.table_primal
         print('\n\n------------------------------------------------')
         print('PRIMAL TABLE:\n', self.table_primal)
         self.table_primal = PrimalOperators.pivot_operations(self, a = self.table_primal, has_two_phases=self.has_two_phases, number_artificial_vars = sum(self.needs_artificial))
@@ -402,11 +410,43 @@ class Simplex:
         DualOperators.get_results(self, a=self.table_dual)
         return self.table_dual
 
+    def run_sensitivity_primal(self):
+        for col in range(self.table_primal.shape[1]-1):
+            if self.table_primal[:-1,col].max() == 1 and abs(self.table_primal[:-1,col]).sum() == 1:
+                self.var_basic_index.append(col)
+            else: 
+                self.var_nonbasic_index.append(col)
+        self.B_ = self.A_primal[:,self.var_basic_index]
+        self.sensitivity_operations()
+    
+    def sensitivity_operations(self):
+        b = self.b_primal[:-1]
+        B_ = self.B_
+        z = symbols('Z', extended_real=True)
+        B_inv = Matrix(np.asarray(np.linalg.inv(np.matrix(B_))))
+        variations = []
+        for i in range(len(b)):
+                
+            b_2=Matrix(b)
+            b_2[i]+=z
+            eq = B_inv*b_2
+            ineq =[]
+            for linha in eq:
+                ineq.append((linha,">"))
+            ineq_ = []
+            ineq_.append(ineq)
+            result = reduce_rational_inequalities(ineq_, z)
+            if result:
+                print(f"Sensitivity Analysis x{self.var_basic_index[i]}: {result}")
+        
+            variations.append(result)
+
     def solve(self):
         self.primal()
         self.dual()
         self.run_primal()
         self.run_dual()
+        self.run_sensitivity_primal()
 
 if __name__ == '__main__':
     simplex = Simplex()
@@ -418,10 +458,10 @@ if __name__ == '__main__':
     #simplex.solve()
 
     #Example MAX 02 - CORRETO {Z = 1.86, X_1 = 1.29, X_2 = 0.28}
-    #simplex.objective_function('max', '2*x_1 + 1*x_2')
-    #simplex.add_constraints(['3*x_1 + 4*x_2 <= 6', '6*x_1 + 1*x_2 <= 3'])
-    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
-    #simplex.solve()
+    simplex.objective_function('max', '2*x_1 + 1*x_2')
+    simplex.add_constraints(['3*x_1 + 4*x_2 <= 6', '6*x_1 + 1*x_2 <= 3'])
+    simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    simplex.solve()
 
     #Example MAX 03 - CORRETO {Z = 43.95, X_1 = 11.98, X_2 = 16.05}
     #simplex.objective_function('max', '1*x_1 + 2*x_2')
@@ -484,10 +524,24 @@ if __name__ == '__main__':
     #simplex.solve()
 
     #Example MIN 05 | DUAS FASE | - CORRETO {Z = 7500.0, X_1 = 10.0, X_2 = 0.0}
-    simplex.objective_function('min', '1700*x_1 + 750*x_2 + 800*x_3')
-    simplex.add_constraints(['2*x_1 + 2*x_2 + 5*x_3 >= 20','3*x_1 + 1*x_2 + 5*x_3 = 10'])
-    simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0','x_3 >= 0'])
-    simplex.solve()
+    #simplex.objective_function('min', '1700*x_1 + 750*x_2 + 800*x_3')
+    #simplex.add_constraints(['2*x_1 + 2*x_2 + 5*x_3 >= 20','3*x_1 + 1*x_2 + 5*x_3 = 10'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0','x_3 >= 0'])
+    #simplex.solve()
+
+    #Example MIN 05 | DUAS FASE | - CORRETO {Z = 7500.0, X_1 = 10.0, X_2 = 0.0}
+    #simplex.objective_function('min', '1*x_1 + 2*x_2')
+    #simplex.add_constraints(['-2*x_1 + 1*x_2 <= 3',
+    #                        '3*x_1 + 4*x_2 <= 5',
+    #                        '1*x_1 + -1*x_2 <= 2'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0'])
+    #simplex.solve()
+
+    #Example MIN 05 | DUAS FASE | - CORRETO {Z = 13.62, X_2 = 2.08, X_3 = 3.69}
+    #simplex.objective_function('max', '1*x_1 + 2*x_2 + 3*x_3')
+    #simplex.add_constraints(['1*x_1 + 1*x_2 + 1*x_3 <= 10','2*x_1 + 1*x_2 + 4*x_3 <= 12', '1*x_1 + 3*x_2 + -1*x_3 <= 9'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0','x_3 >= 0'])
+    #simplex.solve()
 
     #Example MIN 06 | DUAS FASE | - CORRETO {Z = 21.0, X_1 = 4.0, X_2 = 1.0, X_3 = -21.0}
     #simplex.objective_function('min', '3*x_1 + 4*x_2 + 9*x_3')
@@ -500,4 +554,15 @@ if __name__ == '__main__':
     #simplex.objective_function('max', '6*x_1 + -1*x_2')
     #simplex.add_constraints(['4*x_1 + 1*x_2 <= 21', '2*x_1 + 3*x_2 >= 13', '-1*x_1 + 1*x_2 = 1'])
     #simplex.add_var_constraints(['x_1 >= 0', 'x_2 >= 0'])
+    #simplex.solve()
+
+    #simplex.objective_function('max', '60*x_1 + 30*x_2 + 20*x_3')
+    #simplex.add_constraints(['8*x_1 + 6*x_2 + 1*x_3 <= 48', '4*x_1 + 2*x_2 + 1.5*x_3 <= 20', '2*x_1+ 1.5*x_2 + 0.5*x_3 <= 8'])
+    #simplex.add_var_constraints(['x_1 >= 0', 'x_2 >= 0', 'x_3 >= 0'])
+    #simplex.solve()
+
+    #Example MIN 04 |DUAS FASES| - CORRETO {Z = 36.0, X_1 = 1.0, X_2 = 1.5}
+    #simplex.objective_function('max', '60*x_1 + 30*x_2 + 20*x_3 + 15*x_4')
+    #simplex.add_constraints(['8*x_1 + 6*x_2 + 1*x_3 + 1*x_4 <= 48','4*x_1 + 2*x_2 + 1.5*x_3 + 1*x_4 <= 20', '2*x_1 + 1.5*x_2 + 0.5*x_3 + 1*x_4 <= 8'])
+    #simplex.add_var_constraints(['x_1 >= 0','x_2 >= 0','x_3 >= 0', 'x_4 >= 0'])
     #simplex.solve()
